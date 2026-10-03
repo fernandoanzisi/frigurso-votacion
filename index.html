@@ -6,62 +6,66 @@
 <title>Votación Frigurso</title>
 <style>
   :root{
-    --bg:#0f172a; --card:#1e293b; --card2:#16213a; --text:#f1f5f9; --muted:#94a3b8;
-    --green:#22c55e; --greenD:#15803d; --red:#ef4444; --redD:#b91c1c;
-    --accent:#38bdf8; --border:#334155;
+    --bg:#eef2f7; --card:#ffffff; --card2:#eaf6ff; --text:#0f172a; --muted:#3f4e63;
+    --green:#15803d; --greenBtn:#16a34a; --greenBtnD:#0f6e30; --red:#b91c1c; --redBtn:#dc2626; --redBtnD:#a01616;
+    --accent:#0369a1; --border:#cbd5e1;
   }
   *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
   body{
     margin:0; min-height:100vh; background:var(--bg); color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:18px; line-height:1.4;
     padding:16px; padding-bottom:48px;
   }
-  .wrap{max-width:480px; margin:0 auto;}
-  h1{font-size:1.4rem; margin:4px 0 2px; text-align:center;}
-  .sub{text-align:center; color:var(--muted); font-size:.85rem; margin-bottom:20px;}
-  .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:16px;}
-  .card h2{margin:0 0 4px; font-size:1.15rem;}
-  .meta{color:var(--muted); font-size:.9rem; margin:2px 0;}
-  .progreso-box{margin:14px 0;}
-  .progreso-track{background:#0b1222; border-radius:999px; height:14px; overflow:hidden; border:1px solid var(--border);}
-  .progreso-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--green)); transition:width .3s;}
-  .progreso-label{text-align:center; font-weight:600; margin-top:6px; font-size:.95rem;}
-  .badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.3px;}
-  .badge.abierta{background:#064e3b; color:#6ee7b7;}
-  .badge.cerrada{background:#450a0a; color:#fca5a5;}
+  .wrap{max-width:520px; margin:0 auto;}
+  h1{font-size:1.9rem; margin:4px 0 4px; text-align:center; font-weight:800;}
+  .sub{text-align:center; color:var(--muted); font-size:1.05rem; margin-bottom:22px; font-weight:600;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; margin-bottom:18px; box-shadow:0 2px 8px rgba(15,23,42,.06);}
+  .card h2{margin:0 0 6px; font-size:1.5rem; font-weight:800;}
+  .meta{color:var(--text); font-size:1.15rem; margin:6px 0; font-weight:600;}
+  .progreso-box{margin:16px 0 4px;}
+  .progreso-track{background:#e2e8f0; border-radius:999px; height:22px; overflow:hidden; border:1px solid var(--border);}
+  .progreso-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--greenBtn)); transition:width .3s;}
+  .progreso-label{text-align:center; font-weight:800; margin-top:8px; font-size:1.25rem;}
+  .badge{display:inline-block; padding:6px 14px; border-radius:999px; font-size:.95rem; font-weight:800; letter-spacing:.3px;}
+  .badge.abierta{background:#dcfce7; color:#166534;}
+  .badge.cerrada{background:#fee2e2; color:#991b1b;}
   input[type=text]{
-    width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
-    background:#0b1222; color:var(--text); font-size:1rem; margin:8px 0 14px;
+    width:100%; padding:16px; border-radius:12px; border:2px solid var(--border);
+    background:#fff; color:var(--text); font-size:1.2rem; margin:8px 0 16px; min-height:56px;
   }
-  label{font-size:.85rem; color:var(--muted); display:block; margin-top:10px;}
-  .botones{display:flex; gap:10px;}
+  input[type=text]:focus{outline:3px solid var(--accent); border-color:var(--accent);}
+  label{font-size:1.05rem; color:var(--text); display:block; margin-top:12px; font-weight:700;}
+  .botones{display:flex; gap:12px;}
   button{
-    border:none; border-radius:12px; padding:14px 10px; font-size:1rem; font-weight:700;
-    cursor:pointer; flex:1; color:#fff; transition:transform .1s, opacity .2s;
+    border:none; border-radius:14px; padding:18px 10px; font-size:1.3rem; font-weight:800;
+    cursor:pointer; flex:1; color:#fff; transition:transform .1s, opacity .2s; min-height:64px;
   }
   button:active{transform:scale(.97);}
   button:disabled{opacity:.4; cursor:not-allowed;}
-  .btn-voy{background:var(--green);}
-  .btn-voy.sel{background:var(--greenD); outline:3px solid var(--green);}
-  .btn-novoy{background:var(--red);}
-  .btn-novoy.sel{background:var(--redD); outline:3px solid var(--red);}
-  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text); flex:none;}
+  .btn-voy{background:var(--greenBtn);}
+  .btn-voy.sel{background:var(--greenBtnD); outline:4px solid #86efac;}
+  .btn-novoy{background:var(--redBtn);}
+  .btn-novoy.sel{background:var(--redBtnD); outline:4px solid #fca5a5;}
+  .btn-ghost{background:#fff; border:2px solid var(--border); color:var(--text); flex:none; font-size:1.05rem; padding:14px 16px;}
   .btn-full{width:100%;}
-  .mensaje{text-align:center; padding:10px; border-radius:10px; margin:10px 0; font-size:.9rem;}
-  .mensaje.ok{background:#064e3b; color:#6ee7b7;}
-  .mensaje.err{background:#450a0a; color:#fca5a5;}
-  .lista{list-style:none; padding:0; margin:8px 0 0;}
-  .lista li{padding:6px 0; border-bottom:1px solid var(--border); font-size:.9rem; display:flex; justify-content:space-between;}
+  .mensaje{text-align:center; padding:14px; border-radius:12px; margin:12px 0; font-size:1.15rem; font-weight:700;}
+  .mensaje.ok{background:#dcfce7; color:#166534;}
+  .mensaje.err{background:#fee2e2; color:#991b1b;}
+  .lista{list-style:none; padding:0; margin:10px 0 0;}
+  .lista li{padding:10px 0; border-bottom:1px solid var(--border); font-size:1.1rem; display:flex; justify-content:space-between;}
   .lista li:last-child{border-bottom:none;}
-  .cerrada-banner{background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5; border-radius:12px; padding:14px; text-align:center; font-weight:700; margin-bottom:14px;}
+  .cerrada-banner{background:#fee2e2; border:2px solid #fca5a5; color:#991b1b; border-radius:14px; padding:18px; text-align:center; font-weight:800; font-size:1.2rem; margin-bottom:16px;}
   .col2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
   .admin-panel{border:2px dashed var(--accent); background:var(--card2);}
-  .admin-panel h2{color:var(--accent);}
-  .small{font-size:.8rem; color:var(--muted);}
+  .admin-panel h2{color:var(--accent); font-size:1.3rem;}
+  .small{font-size:.95rem; color:var(--muted);}
   a.link{color:var(--accent);}
-  hr{border:none; border-top:1px solid var(--border); margin:16px 0;}
-  .footer{text-align:center; color:var(--muted); font-size:.75rem; margin-top:24px;}
-  .copy-ok{color:var(--green); font-weight:700;}
+  hr{border:none; border-top:1px solid var(--border); margin:18px 0;}
+  .footer{text-align:center; color:var(--muted); font-size:.85rem; margin-top:24px;}
+  .copy-ok{color:var(--green); font-weight:800;}
+  .instruccion{background:#eaf6ff; border:2px solid #bae6fd; border-radius:14px; padding:14px 16px; text-align:center; font-size:1.1rem; font-weight:700; color:#075985; margin-bottom:16px;}
 </style>
 </head>
 <body>
@@ -182,6 +186,7 @@ function render() {
   if (!cerrada) {
     const sel = seleccionPendiente || (miVotoActual ? miVotoActual.respuesta : null);
     html += `
+      <div class="instruccion">👇 Escribí tu nombre y tocá VOY o NO VOY</div>
       <div class="card">
         <label>Tu nombre</label>
         <input type="text" id="nombreInput" placeholder="Ej: Fernando A." value="${escapeHtml(nombreGuardado)}">
