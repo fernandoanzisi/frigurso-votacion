@@ -201,16 +201,16 @@ function render() {
         ${miVotoActual && miVotoActual.respuesta === 'voy' && miNumero > 0 ? `<p class="mensaje ok" style="margin-top:10px;">🎟️ Sos el confirmado Nº ${miNumero} de ${cupo}</p>` : ''}
       </div>
     `;
-  } else {
-    html += `
-      <div class="card">
-        <h2 style="font-size:1rem;">✅ Van (${vanList.length})</h2>
-        <ul class="lista">
-          ${vanList.map((v,i) => `<li><span>${i+1}. ${escapeHtml(v.nombre)}${v.id===deviceId?' (vos)':''}</span></li>`).join('') || '<li class="small">Nadie confirmó</li>'}
-        </ul>
-      </div>
-    `;
   }
+
+  html += `
+    <div class="card">
+      <h2 style="font-size:1rem;">✅ Van (${vanList.length})</h2>
+      <ul class="lista">
+        ${vanList.map((v,i) => `<li><span>${i+1}. ${escapeHtml(v.nombre)}${v.id===deviceId?' (vos)':''}</span></li>`).join('') || '<li class="small">Todavía nadie confirmó</li>'}
+      </ul>
+    </div>
+  `;
 
   if (esAdmin) {
     html += renderAdminPanel(votos, cerrada, cupo, vanList);
