@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Votación Frigurso</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#16213a; --text:#f1f5f9; --muted:#94a3b8;
+    --green:#22c55e; --greenD:#15803d; --red:#ef4444; --redD:#b91c1c;
+    --accent:#38bdf8; --border:#334155;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:16px; padding-bottom:48px;
+  }
+  .wrap{max-width:480px; margin:0 auto;}
+  h1{font-size:1.4rem; margin:4px 0 2px; text-align:center;}
+  .sub{text-align:center; color:var(--muted); font-size:.85rem; margin-bottom:20px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px; margin-bottom:16px;}
+  .card h2{margin:0 0 4px; font-size:1.15rem;}
+  .meta{color:var(--muted); font-size:.9rem; margin:2px 0;}
+  .progreso-box{margin:14px 0;}
+  .progreso-track{background:#0b1222; border-radius:999px; height:14px; overflow:hidden; border:1px solid var(--border);}
+  .progreso-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--green)); transition:width .3s;}
+  .progreso-label{text-align:center; font-weight:600; margin-top:6px; font-size:.95rem;}
+  .badge{display:inline-block; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.3px;}
+  .badge.abierta{background:#064e3b; color:#6ee7b7;}
+  .badge.cerrada{background:#450a0a; color:#fca5a5;}
+  input[type=text]{
+    width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--border);
+    background:#0b1222; color:var(--text); font-size:1rem; margin:8px 0 14px;
+  }
+  label{font-size:.85rem; color:var(--muted); display:block; margin-top:10px;}
+  .botones{display:flex; gap:10px;}
+  button{
+    border:none; border-radius:12px; padding:14px 10px; font-size:1rem; font-weight:700;
+    cursor:pointer; flex:1; color:#fff; transition:transform .1s, opacity .2s;
+  }
+  button:active{transform:scale(.97);}
+  button:disabled{opacity:.4; cursor:not-allowed;}
+  .btn-voy{background:var(--green);}
+  .btn-voy.sel{background:var(--greenD); outline:3px solid var(--green);}
+  .btn-novoy{background:var(--red);}
+  .btn-novoy.sel{background:var(--redD); outline:3px solid var(--red);}
+  .btn-ghost{background:transparent; border:1px solid var(--border); color:var(--text); flex:none;}
+  .btn-full{width:100%;}
+  .mensaje{text-align:center; padding:10px; border-radius:10px; margin:10px 0; font-size:.9rem;}
+  .mensaje.ok{background:#064e3b; color:#6ee7b7;}
+  .mensaje.err{background:#450a0a; color:#fca5a5;}
+  .lista{list-style:none; padding:0; margin:8px 0 0;}
+  .lista li{padding:6px 0; border-bottom:1px solid var(--border); font-size:.9rem; display:flex; justify-content:space-between;}
+  .lista li:last-child{border-bottom:none;}
+  .cerrada-banner{background:#450a0a; border:1px solid #7f1d1d; color:#fca5a5; border-radius:12px; padding:14px; text-align:center; font-weight:700; margin-bottom:14px;}
+  .col2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .admin-panel{border:2px dashed var(--accent); background:var(--card2);}
+  .admin-panel h2{color:var(--accent);}
+  .small{font-size:.8rem; color:var(--muted);}
+  a.link{color:var(--accent);}
+  hr{border:none; border-top:1px solid var(--border); margin:16px 0;}
+  .footer{text-align:center; color:var(--muted); font-size:.75rem; margin-top:24px;}
+  .copy-ok{color:var(--green); font-weight:700;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚽ Votación Frigurso</h1>
+  <div class="sub">Confirmá si venís a jugar — con cupo límite</div>
+
+  <div id="app"></div>
+
+  <div class="footer">Frigurso · votación con cupo real</div>
+</div>
+
+<!-- Firebase (CDN oficial de Google, no de Claude) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script>
+/* =======================================================================
+   1) CONFIGURACIÓN — completar después de crear el proyecto en Firebase
+   ======================================================================= */
+const firebaseConfig = {
+  apiKey: "PEGAR_AQUI",
+  authDomain: "PEGAR_AQUI.firebaseapp.com",
+  projectId: "PEGAR_AQUI",
+  storageBucket: "PEGAR_AQUI.appspot.com",
+  messagingSenderId: "PEGAR_AQUI",
+  appId: "PEGAR_AQUI"
+};
+
+// PIN de administrador. CAMBIALO antes de subir el repo / compartir el link.
+const ADMIN_PIN = "1234";
+
+/* ======================================================================= */
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const pollRef = db.collection('votaciones').doc('actual');
+const params = new URLSearchParams(location.search);
+const esAdmin = params.get('admin') === ADMIN_PIN;
+
+// Identidad por dispositivo (evita choques de nombres repetidos entre amigos)
+let deviceId = localStorage.getItem('frigurso_votacion_device_id');
+if (!deviceId) {
+  deviceId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+  localStorage.setItem('frigurso_votacion_device_id', deviceId);
+}
+const nombreGuardado = localStorage.getItem('frigurso_votacion_nombre') || '';
+
+const app = document.getElementById('app');
+let pollData = null;
+let votos = [];
+let miVotoActual = null; // respuesta del voto de este dispositivo en la votación actual
+let seleccionPendiente = null;
+let mensaje = null;
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function fmtFechaHora(p){
+  const partes = [];
+  if (p.fecha) partes.push(p.fecha);
+  if (p.hora) partes.push(p.hora + 'hs');
+  return partes.join(' · ');
+}
+
+function render() {
+  if (!pollData) {
+    app.innerHTML = `
+      <div class="card">
+        <p class="meta">Todavía no hay una votación activa.</p>
+        ${esAdmin ? '' : '<p class="small">Pedile al admin que cree la votación del próximo partido.</p>'}
+      </div>
+      ${esAdmin ? renderAdminCrear() : ''}
+    `;
+    bindAdminCrear();
+    return;
+  }
+
+  const cupo = pollData.cupo || 0;
+  const votosVoy = pollData.votosVoy || 0;
+  const cerrada = !!pollData.cerrada;
+  const pct = cupo > 0 ? Math.min(100, Math.round((votosVoy / cupo) * 100)) : 0;
+
+  const vanList = votos.filter(v => v.respuesta === 'voy').sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const noVanList = votos.filter(v => v.respuesta === 'no_voy');
+
+  let html = '';
+
+  if (cerrada) {
+    html += `<div class="cerrada-banner">🔒 Votación cerrada — cupo completo, ya no se puede votar</div>`;
+  }
+
+  html += `
+    <div class="card">
+      <span class="badge ${cerrada ? 'cerrada' : 'abierta'}">${cerrada ? 'CERRADA' : 'ABIERTA'}</span>
+      <h2>${escapeHtml(pollData.titulo || 'Partido')}</h2>
+      <p class="meta">📅 ${escapeHtml(fmtFechaHora(pollData))}</p>
+      ${pollData.lugar ? `<p class="meta">📍 ${escapeHtml(pollData.lugar)}</p>` : ''}
+      <div class="progreso-box">
+        <div class="progreso-track"><div class="progreso-fill" style="width:${pct}%"></div></div>
+        <div class="progreso-label">${votosVoy} / ${cupo} confirmados</div>
+      </div>
+    </div>
+  `;
+
+  if (mensaje) {
+    html += `<div class="mensaje ${mensaje.tipo}">${escapeHtml(mensaje.texto)}</div>`;
+  }
+
+  if (!cerrada) {
+    const sel = seleccionPendiente || (miVotoActual ? miVotoActual.respuesta : null);
+    html += `
+      <div class="card">
+        <label>Tu nombre</label>
+        <input type="text" id="nombreInput" placeholder="Ej: Fernando A." value="${escapeHtml(nombreGuardado)}">
+        <div class="botones">
+          <button class="btn-voy ${sel==='voy'?'sel':''}" id="btnVoy">✅ VOY</button>
+          <button class="btn-novoy ${sel==='no_voy'?'sel':''}" id="btnNoVoy">❌ NO VOY</button>
+        </div>
+        ${miVotoActual ? `<p class="small" style="margin-top:10px;">Tu voto guardado: <b>${miVotoActual.respuesta === 'voy' ? 'VOY ✅' : 'NO VOY ❌'}</b> (podés cambiarlo mientras esté abierta)</p>` : ''}
+      </div>
+    `;
+  } else {
+    html += `
+      <div class="card">
+        <h2 style="font-size:1rem;">✅ Van (${vanList.length})</h2>
+        <ul class="lista">
+          ${vanList.map(v => `<li><span>${escapeHtml(v.nombre)}</span></li>`).join('') || '<li class="small">Nadie confirmó</li>'}
+        </ul>
+      </div>
+    `;
+  }
+
+  if (esAdmin) {
+    html += renderAdminPanel(votos, cerrada, cupo);
+  }
+
+  app.innerHTML = html;
+  bindViewHandlers();
+  if (esAdmin) bindAdminPanel();
+}
+
+function renderAdminCrear() {
+  return `
+    <div class="card admin-panel">
+      <h2>🔧 Crear votación (admin)</h2>
+      <label>Título</label>
+      <input type="text" id="aTitulo" placeholder="Ej: Partido del sábado">
+      <div class="col2">
+        <div><label>Fecha</label><input type="text" id="aFecha" placeholder="Sáb 10/10"></div>
+        <div><label>Hora</label><input type="text" id="aHora" placeholder="15:30"></div>
+      </div>
+      <label>Lugar</label>
+      <input type="text" id="aLugar" placeholder="Lo de Tasinero">
+      <label>Cupo máximo</label>
+      <input type="text" id="aCupo" placeholder="20" inputmode="numeric">
+      <button class="btn-full btn-voy" id="btnCrear">Crear y abrir votación</button>
+    </div>
+  `;
+}
+
+function renderAdminPanel(votosList, cerrada, cupo) {
+  const noVan = votosList.filter(v => v.respuesta === 'no_voy');
+  return `
+    <div class="card admin-panel">
+      <h2>🔧 Panel admin</h2>
+      <div class="botones">
+        ${!cerrada ? '<button class="btn-ghost" id="btnCerrarAhora">Cerrar ahora</button>' : '<button class="btn-ghost" id="btnReabrir">Reabrir</button>'}
+        <button class="btn-ghost" id="btnCopiarLink">Copiar link para WhatsApp</button>
+      </div>
+      <p id="copyFeedback" class="small"></p>
+      <hr>
+      <p class="small">Ampliar cupo (si alguien se bajó y hay lugar):</p>
+      <div class="botones">
+        <input type="text" id="aNuevoCupo" placeholder="Nuevo cupo" inputmode="numeric" style="margin:0;">
+        <button class="btn-ghost" id="btnCambiarCupo">Aplicar</button>
+      </div>
+      <hr>
+      <p class="small">❌ No van (${noVan.length}): ${noVan.map(v=>escapeHtml(v.nombre)).join(', ') || '—'}</p>
+      <hr>
+      <button class="btn-full btn-novoy" id="btnNuevaVotacion">🗑️ Nueva votación (borra esta)</button>
+      <div id="formNueva"></div>
+    </div>
+  `;
+}
+
+function bindAdminCrear() {
+  const btn = document.getElementById('btnCrear');
+  if (!btn) return;
+  btn.onclick = async () => {
+    const titulo = document.getElementById('aTitulo').value.trim() || 'Partido';
+    const fecha = document.getElementById('aFecha').value.trim();
+    const hora = document.getElementById('aHora').value.trim();
+    const lugar = document.getElementById('aLugar').value.trim();
+    const cupo = parseInt(document.getElementById('aCupo').value, 10);
+    if (!cupo || cupo <= 0) { alert('Poné un cupo válido'); return; }
+    await crearNuevaVotacion({ titulo, fecha, hora, lugar, cupo });
+  };
+}
+
+function bindViewHandlers() {
+  const btnVoy = document.getElementById('btnVoy');
+  const btnNoVoy = document.getElementById('btnNoVoy');
+  if (btnVoy) btnVoy.onclick = () => votar('voy');
+  if (btnNoVoy) btnNoVoy.onclick = () => votar('no_voy');
+}
+
+function bindAdminPanel() {
+  const btnCerrar = document.getElementById('btnCerrarAhora');
+  const btnReabrir = document.getElementById('btnReabrir');
+  const btnCopiar = document.getElementById('btnCopiarLink');
+  const btnCambiarCupo = document.getElementById('btnCambiarCupo');
+  const btnNueva = document.getElementById('btnNuevaVotacion');
+
+  if (btnCerrar) btnCerrar.onclick = () => pollRef.update({ cerrada: true });
+  if (btnReabrir) btnReabrir.onclick = () => pollRef.update({ cerrada: false });
+  if (btnCopiar) btnCopiar.onclick = async () => {
+    const url = location.origin + location.pathname;
+    try {
+      await navigator.clipboard.writeText(url);
+      document.getElementById('copyFeedback').innerHTML = '<span class="copy-ok">✅ Copiado — pegalo en el grupo</span>';
+    } catch (e) {
+      document.getElementById('copyFeedback').textContent = url;
+    }
+  };
+  if (btnCambiarCupo) btnCambiarCupo.onclick = () => {
+    const n = parseInt(document.getElementById('aNuevoCupo').value, 10);
+    if (!n || n <= 0) { alert('Cupo inválido'); return; }
+    pollRef.update({ cupo: n, cerrada: (pollData.votosVoy || 0) >= n });
+  };
+  if (btnNueva) btnNueva.onclick = () => {
+    document.getElementById('formNueva').innerHTML = renderAdminCrear();
+    bindAdminCrear();
+  };
+}
+
+async function votar(respuesta) {
+  const nombreInput = document.getElementById('nombreInput');
+  const nombre = nombreInput.value.trim();
+  if (!nombre) { mostrarMensaje('err', 'Escribí tu nombre primero'); nombreInput.focus(); return; }
+
+  seleccionPendiente = respuesta;
+  const voteRef = pollRef.collection('votos').doc(deviceId);
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const pollSnap = await tx.get(pollRef);
+      if (!pollSnap.exists) throw new Error('NO_POLL');
+      const poll = pollSnap.data();
+      if (poll.cerrada) throw new Error('CERRADA');
+
+      const voteSnap = await tx.get(voteRef);
+      const prevRespuesta = voteSnap.exists ? voteSnap.data().respuesta : null;
+
+      let nuevoCount = poll.votosVoy || 0;
+      if (prevRespuesta === 'voy' && respuesta !== 'voy') nuevoCount -= 1;
+      if (prevRespuesta !== 'voy' && respuesta === 'voy') nuevoCount += 1;
+
+      if (respuesta === 'voy' && prevRespuesta !== 'voy' && nuevoCount > poll.cupo) {
+        throw new Error('CUPO_LLENO');
+      }
+
+      const cerrarAhora = nuevoCount >= poll.cupo;
+
+      tx.set(voteRef, {
+        nombre,
+        respuesta,
+        ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      tx.update(pollRef, { votosVoy: Math.max(0, nuevoCount), cerrada: cerrarAhora });
+    });
+
+    localStorage.setItem('frigurso_votacion_nombre', nombre);
+    mostrarMensaje('ok', respuesta === 'voy' ? '✅ ¡Listo, confirmaste que vas!' : 'Anotado: no vas esta vez.');
+  } catch (e) {
+    if (e.message === 'CUPO_LLENO') {
+      mostrarMensaje('err', '😔 Se completó el cupo justo ahora. No quedan lugares.');
+    } else if (e.message === 'CERRADA') {
+      mostrarMensaje('err', 'La votación ya está cerrada.');
+    } else {
+      mostrarMensaje('err', 'Hubo un error, probá de nuevo.');
+    }
+  } finally {
+    seleccionPendiente = null;
+  }
+}
+
+function mostrarMensaje(tipo, texto) {
+  mensaje = { tipo, texto };
+  render();
+  setTimeout(() => { mensaje = null; render(); }, 4000);
+}
+
+async function crearNuevaVotacion({ titulo, fecha, hora, lugar, cupo }) {
+  const votosSnap = await pollRef.collection('votos').get();
+  const batch = db.batch();
+  votosSnap.forEach(doc => batch.delete(doc.ref));
+  batch.set(pollRef, {
+    titulo, fecha, hora, lugar, cupo,
+    votosVoy: 0,
+    cerrada: false,
+    creadaEn: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await batch.commit();
+}
+
+// Escuchar la votación en tiempo real
+pollRef.onSnapshot(snap => {
+  pollData = snap.exists ? snap.data() : null;
+  render();
+});
+
+// Escuchar los votos en tiempo real (lista + mi propio voto)
+pollRef.collection('votos').onSnapshot(snap => {
+  votos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const mio = snap.docs.find(d => d.id === deviceId);
+  miVotoActual = mio ? mio.data() : null;
+  render();
+});
+
+render();
+</script>
+</body>
+</html>

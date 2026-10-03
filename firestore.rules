@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /votaciones/{pollId} {
+      allow read: if true;
+      allow write: if true;
+
+      match /votos/{voteId} {
+        allow read: if true;
+        allow create, update: if request.resource.data.nombre is string
+                               && request.resource.data.nombre.size() > 0
+                               && request.resource.data.nombre.size() < 60
+                               && request.resource.data.respuesta in ['voy', 'no_voy'];
+        allow delete: if true;
+      }
+    }
+  }
+}
