@@ -210,7 +210,7 @@ function render() {
   }
 
   if (esAdmin) {
-    html += renderAdminPanel(votos, cerrada, cupo);
+    html += renderAdminPanel(votos, cerrada, cupo, vanList);
   }
 
   app.innerHTML = html;
@@ -237,7 +237,7 @@ function renderAdminCrear() {
   `;
 }
 
-function renderAdminPanel(votosList, cerrada, cupo) {
+function renderAdminPanel(votosList, cerrada, cupo, vanList) {
   const noVan = votosList.filter(v => v.respuesta === 'no_voy');
   return `
     <div class="card admin-panel">
@@ -248,7 +248,17 @@ function renderAdminPanel(votosList, cerrada, cupo) {
       </div>
       <p id="copyFeedback" class="small"></p>
       <hr>
-      <p class="small">Ampliar cupo (si alguien se bajó y hay lugar):</p>
+      <p class="small"><b>¿Se bajó alguien?</b> Tocá "Sacar" al lado de su nombre — le libera el lugar a otro automáticamente.</p>
+      <ul class="lista">
+        ${vanList.map((v,i) => `
+          <li>
+            <span>${i+1}. ${escapeHtml(v.nombre)}</span>
+            <button class="btn-ghost btn-sacar" data-id="${v.id}" data-nombre="${escapeHtml(v.nombre)}" style="padding:6px 12px; font-size:.9rem;">Sacar</button>
+          </li>
+        `).join('') || '<li class="small">Nadie confirmó todavía</li>'}
+      </ul>
+      <hr>
+      <p class="small">Ampliar cupo total (si querés sumar un lugar más, sin sacar a nadie):</p>
       <div class="botones">
         <input type="text" id="aNuevoCupo" placeholder="Nuevo cupo" inputmode="numeric" style="margin:0;">
         <button class="btn-ghost" id="btnCambiarCupo">Aplicar</button>
@@ -310,6 +320,31 @@ function bindAdminPanel() {
     document.getElementById('formNueva').innerHTML = renderAdminCrear();
     bindAdminCrear();
   };
+  document.querySelectorAll('.btn-sacar').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const nombre = btn.dataset.nombre;
+      if (confirm(`¿Sacar a ${nombre} de la lista? Se le libera el lugar a otro.`)) {
+        adminQuitarVoto(id);
+      }
+    };
+  });
+}
+
+async function adminQuitarVoto(voteId) {
+  const voteRef = pollRef.collection('votos').doc(voteId);
+  await db.runTransaction(async (tx) => {
+    const pollSnap = await tx.get(pollRef);
+    if (!pollSnap.exists) return;
+    const poll = pollSnap.data();
+    const voteSnap = await tx.get(voteRef);
+    if (!voteSnap.exists) return;
+    const eraVoy = voteSnap.data().respuesta === 'voy';
+    let nuevoCount = poll.votosVoy || 0;
+    if (eraVoy) nuevoCount = Math.max(0, nuevoCount - 1);
+    tx.delete(voteRef);
+    tx.update(pollRef, { votosVoy: nuevoCount, cerrada: nuevoCount >= poll.cupo });
+  });
 }
 
 async function votar(respuesta) {
