@@ -123,6 +123,7 @@ let votos = [];
 let miVotoActual = null; // respuesta del voto de este dispositivo en la votación actual
 let seleccionPendiente = null;
 let mensaje = null;
+let equiposGenerados = null;
 
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -311,10 +312,73 @@ function renderAdminPanel(votosList, cerrada, cupo, vanList) {
       <hr>
       <p class="small">❌ No van (${noVan.length}): ${noVan.map(v=>escapeHtml(v.nombre)).join(', ') || '—'}</p>
       <hr>
+      <button class="btn-full btn-voy" id="btnArmarEquipos">⚽ Armar equipos parejos</button>
+      <div id="equiposResultado">${equiposGenerados ? renderEquiposResultado(equiposGenerados) : ''}</div>
+      <hr>
       <button class="btn-full btn-novoy" id="btnNuevaVotacion">🗑️ Nueva votación (borra esta)</button>
       <div id="formNueva"></div>
     </div>
   `;
+}
+
+function armarEquipos(vanList) {
+  const orden = ['arquero', 'defensor', 'mediocampo', 'delantero'];
+  const grupos = orden.map(key =>
+    vanList.filter(v => v.puesto === key).sort((a,b) => (parseInt(b.edad)||0) - (parseInt(a.edad)||0))
+  );
+  const sinPuesto = vanList.filter(v => !orden.includes(v.puesto)).sort((a,b) => (parseInt(b.edad)||0) - (parseInt(a.edad)||0));
+  grupos.push(sinPuesto);
+
+  const equipoA = [], equipoB = [];
+  let sumaA = 0, sumaB = 0;
+
+  grupos.forEach(grupo => {
+    grupo.forEach(jugador => {
+      const edad = parseInt(jugador.edad) || 0;
+      let destino;
+      if (equipoA.length < equipoB.length) destino = 'A';
+      else if (equipoB.length < equipoA.length) destino = 'B';
+      else destino = sumaA <= sumaB ? 'A' : 'B';
+      if (destino === 'A') { equipoA.push(jugador); sumaA += edad; }
+      else { equipoB.push(jugador); sumaB += edad; }
+    });
+  });
+
+  return { equipoA, equipoB, sumaA, sumaB };
+}
+
+function iconoPuesto(puesto) {
+  const p = PUESTOS.find(p => p.key === puesto);
+  return p ? p.icono : '❔';
+}
+
+function renderEquiposResultado({ equipoA, equipoB, sumaA, sumaB }) {
+  const promedio = (suma, cant) => cant ? Math.round(suma / cant) : 0;
+  const lista = jugadores => jugadores.map(v =>
+    `<li><span>${iconoPuesto(v.puesto)} ${escapeHtml(v.nombre)}${v.edad ? ' · ' + escapeHtml(String(v.edad)) + ' años' : ''}</span></li>`
+  ).join('') || '<li class="small">—</li>';
+
+  return `
+    <div class="col2" style="margin-top:14px;">
+      <div>
+        <p style="font-weight:800; margin:0 0 4px;">🔵 Equipo A (${equipoA.length})</p>
+        <p class="small" style="margin:0 0 6px;">Edad promedio: ${promedio(sumaA, equipoA.length)}</p>
+        <ul class="lista">${lista(equipoA)}</ul>
+      </div>
+      <div>
+        <p style="font-weight:800; margin:0 0 4px;">🟠 Equipo B (${equipoB.length})</p>
+        <p class="small" style="margin:0 0 6px;">Edad promedio: ${promedio(sumaB, equipoB.length)}</p>
+        <ul class="lista">${lista(equipoB)}</ul>
+      </div>
+    </div>
+    <button class="btn-full btn-ghost" id="btnCopiarEquipos" style="margin-top:12px;">Copiar equipos para WhatsApp</button>
+    <p id="copyEquiposFeedback" class="small"></p>
+  `;
+}
+
+function textoEquipos({ equipoA, equipoB }) {
+  const linea = v => `${v.nombre}${v.edad ? ' (' + v.edad + ')' : ''}`;
+  return `⚽ EQUIPOS\n\n🔵 Equipo A:\n${equipoA.map(linea).join('\n')}\n\n🟠 Equipo B:\n${equipoB.map(linea).join('\n')}`;
 }
 
 function bindAdminCrear() {
@@ -364,6 +428,22 @@ function bindAdminPanel() {
   if (btnNueva) btnNueva.onclick = () => {
     document.getElementById('formNueva').innerHTML = renderAdminCrear();
     bindAdminCrear();
+  };
+  const btnArmarEquipos = document.getElementById('btnArmarEquipos');
+  if (btnArmarEquipos) btnArmarEquipos.onclick = () => {
+    const vanActual = votos.filter(v => v.respuesta === 'voy').sort((a,b)=>tsMillis(a.ts)-tsMillis(b.ts));
+    equiposGenerados = armarEquipos(vanActual);
+    render();
+  };
+  const btnCopiarEquipos = document.getElementById('btnCopiarEquipos');
+  if (btnCopiarEquipos) btnCopiarEquipos.onclick = async () => {
+    const texto = textoEquipos(equiposGenerados);
+    try {
+      await navigator.clipboard.writeText(texto);
+      document.getElementById('copyEquiposFeedback').innerHTML = '<span class="copy-ok">✅ Copiado — pegalo en el grupo</span>';
+    } catch (e) {
+      document.getElementById('copyEquiposFeedback').textContent = texto;
+    }
   };
   document.querySelectorAll('.btn-sacar').forEach(btn => {
     btn.onclick = () => {
@@ -459,6 +539,7 @@ function mostrarMensaje(tipo, texto) {
 }
 
 async function crearNuevaVotacion({ titulo, fecha, hora, lugar, cupo }) {
+  equiposGenerados = null;
   const votosSnap = await pollRef.collection('votos').get();
   const batch = db.batch();
   votosSnap.forEach(doc => batch.delete(doc.ref));
