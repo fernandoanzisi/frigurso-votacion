@@ -121,6 +121,12 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function tsMillis(ts){
+  if (!ts) return Infinity; // voto recién hecho, el servidor todavía no confirmó la hora
+  if (typeof ts.toMillis === 'function') return ts.toMillis();
+  return Infinity;
+}
+
 function fmtFechaHora(p){
   const partes = [];
   if (p.fecha) partes.push(p.fecha);
@@ -146,8 +152,9 @@ function render() {
   const cerrada = !!pollData.cerrada;
   const pct = cupo > 0 ? Math.min(100, Math.round((votosVoy / cupo) * 100)) : 0;
 
-  const vanList = votos.filter(v => v.respuesta === 'voy').sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const vanList = votos.filter(v => v.respuesta === 'voy').sort((a,b)=>tsMillis(a.ts)-tsMillis(b.ts));
   const noVanList = votos.filter(v => v.respuesta === 'no_voy');
+  const miNumero = vanList.findIndex(v => v.id === deviceId) + 1; // 0 si no está en la lista
 
   let html = '';
 
@@ -183,6 +190,7 @@ function render() {
           <button class="btn-novoy ${sel==='no_voy'?'sel':''}" id="btnNoVoy">❌ NO VOY</button>
         </div>
         ${miVotoActual ? `<p class="small" style="margin-top:10px;">Tu voto guardado: <b>${miVotoActual.respuesta === 'voy' ? 'VOY ✅' : 'NO VOY ❌'}</b> (podés cambiarlo mientras esté abierta)</p>` : ''}
+        ${miVotoActual && miVotoActual.respuesta === 'voy' && miNumero > 0 ? `<p class="mensaje ok" style="margin-top:10px;">🎟️ Sos el confirmado Nº ${miNumero} de ${cupo}</p>` : ''}
       </div>
     `;
   } else {
@@ -190,7 +198,7 @@ function render() {
       <div class="card">
         <h2 style="font-size:1rem;">✅ Van (${vanList.length})</h2>
         <ul class="lista">
-          ${vanList.map(v => `<li><span>${escapeHtml(v.nombre)}</span></li>`).join('') || '<li class="small">Nadie confirmó</li>'}
+          ${vanList.map((v,i) => `<li><span>${i+1}. ${escapeHtml(v.nombre)}${v.id===deviceId?' (vos)':''}</span></li>`).join('') || '<li class="small">Nadie confirmó</li>'}
         </ul>
       </div>
     `;
