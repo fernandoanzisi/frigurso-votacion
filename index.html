@@ -104,7 +104,10 @@ const db = firebase.firestore();
 
 const pollRef = db.collection('votaciones').doc('actual');
 const params = new URLSearchParams(location.search);
-const esAdmin = params.get('admin') === ADMIN_PIN;
+if (params.get('admin') === ADMIN_PIN) {
+  localStorage.setItem('frigurso_votacion_admin', '1');
+}
+const esAdmin = localStorage.getItem('frigurso_votacion_admin') === '1';
 
 // Identidad por dispositivo (evita choques de nombres repetidos entre amigos)
 let deviceId = localStorage.getItem('frigurso_votacion_device_id');
